@@ -1,1 +1,965 @@
-test
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAUNA PLAN — あなただけのサウナ体験を設計する</title>
+<meta name="description" content="7つの問いから、あなたに最適なサウナ施設・サウナハット・整いルーティンを提案する診断ツール。">
+<meta name="theme-color" content="#0c0a09">
+<!-- OGP -->
+<meta property="og:title" content="SAUNA PLAN — あなただけのサウナプラン">
+<meta property="og:description" content="7つの問いから、あなただけのサウナ体験を設計します。施設ペアリング、サウナハット、整いルーティンまで。">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SAUNA PLAN — あなただけのサウナプラン">
+<meta name="twitter:description" content="7つの問いから、あなただけのサウナ体験を設計します。">
+<!-- Favicon (inline SVG) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♨</text></svg>">
+<!-- Preconnect for fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Sans+JP:wght@200;300;400;500&display=swap">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg-hot:#0c0a09;--fg-hot:#f5f0eb;--muted-hot:#8a8078;--accent:#c4713b;--accent2:#d4956a;
+    --bg-cool:#f2f7f4;--fg-cool:#2a3a34;--muted-cool:#7a9e8c;--accent-cool:#4a9e88;--accent2-cool:#7ec4b0;
+    --serif:'Cormorant Garamond',Georgia,serif;--sans:'Noto Sans JP','Helvetica Neue',sans-serif;
+  }
+  body{font-family:var(--sans);color:var(--fg-hot);background:var(--bg-hot);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  button{font-family:var(--sans);border-radius:0;-webkit-appearance:none}
+
+  /* Animations */
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slowPulse{0%,100%{opacity:.3}50%{opacity:.6}}
+  @keyframes textGlow{0%,100%{text-shadow:0 0 20px rgba(196,113,59,0)}50%{text-shadow:0 0 40px rgba(196,113,59,.15)}}
+
+  /* ═══ Steam — ロウリュのブワ〜〜〜 ═══
+     設計思想：
+     - 「もくもく」(小粒が多数上昇) ではなく「ブワ〜」(熱波が放射状に広がる)
+     - 少数の大きな要素、低密度、blurは控えめ(5-15px)でしっかり見せる
+     - mix-blend-mode: screen で暗い背景に溶け込む暖色の光
+     - will-change で GPU アクセラレーション
+  */
+  @keyframes steamSpread{
+    0%{transform:scale(.8) translateY(0);opacity:0;filter:blur(8px)}
+    20%{transform:scale(1.2) translateY(-3vh);opacity:.35;filter:blur(10px)}
+    45%{transform:scale(1.9) translateY(-10vh);opacity:.28;filter:blur(12px)}
+    75%{transform:scale(2.8) translateY(-20vh);opacity:.1;filter:blur(14px)}
+    100%{transform:scale(3.5) translateY(-30vh);opacity:0;filter:blur(18px)}
+  }
+  @keyframes steamWander{
+    0%{transform:scale(.9) translate(0,0);opacity:0;filter:blur(6px)}
+    18%{transform:scale(1.2) translate(1vw,-2vh);opacity:.3;filter:blur(8px)}
+    40%{transform:scale(1.7) translate(3vw,-6vh);opacity:.22;filter:blur(10px)}
+    70%{transform:scale(2.4) translate(-1vw,-14vh);opacity:.08;filter:blur(13px)}
+    100%{transform:scale(3) translate(1vw,-22vh);opacity:0;filter:blur(16px)}
+  }
+  @keyframes steamBreathe{
+    0%,100%{transform:scale(1);opacity:.06;filter:blur(22px)}
+    50%{transform:scale(1.12);opacity:.15;filter:blur(26px)}
+  }
+
+  /* Door / Transition */
+  @keyframes doorLeft{0%{transform:translateX(0)}100%{transform:translateX(-105%)}}
+  @keyframes doorRight{0%{transform:translateX(0)}100%{transform:translateX(105%)}}
+  @keyframes lightFlood{0%{opacity:0}20%{opacity:1}60%{opacity:1}100%{opacity:0}}
+  @keyframes breatheIn{0%{opacity:0;transform:scale(.94) translateY(20px)}40%{opacity:.6}100%{opacity:1;transform:scale(1) translateY(0)}}
+
+  /* Gaikiyoku particles */
+  @keyframes floatUp{0%{transform:translateY(0) translateX(0);opacity:0}10%{opacity:.4}90%{opacity:.2}100%{transform:translateY(-80px) translateX(10px);opacity:0}}
+  @keyframes shimmer{0%,100%{opacity:.15}50%{opacity:.35}}
+
+  .steam-container{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;overflow:hidden;transition:opacity 1s ease;mix-blend-mode:screen}
+  /* spread: メインの熱波。巨大でソフト。重なり合う。 */
+  .steam-spread{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle,rgba(190,140,90,.6) 0%,rgba(170,115,65,.3) 25%,rgba(150,95,45,.12) 50%,rgba(130,80,35,.03) 70%,transparent 85%);
+    mix-blend-mode:screen;will-change:transform,opacity,filter;
+    animation:steamSpread ease-in-out infinite;
+  }
+  /* wander: spreadの間を埋める副波 */
+  .steam-wander{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle,rgba(210,170,130,.5) 0%,rgba(190,145,100,.2) 30%,rgba(170,120,70,.06) 55%,transparent 80%);
+    mix-blend-mode:screen;will-change:transform,opacity,filter;
+    animation:steamWander ease-in-out infinite;
+  }
+  /* breathe: 空間全体を覆う暖気。画面の大部分をカバー。 */
+  .steam-breathe{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(ellipse,rgba(196,113,59,.2) 0%,rgba(180,100,50,.08) 35%,rgba(160,80,40,.02) 55%,transparent 75%);
+    mix-blend-mode:screen;will-change:transform,opacity;
+    animation:steamBreathe ease-in-out infinite;
+  }
+  .heat-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 110%,rgba(196,113,59,.15) 0%,rgba(180,120,70,.06) 35%,rgba(150,100,60,.02) 55%,transparent 70%);pointer-events:none;z-index:0;transition:opacity 1s ease}
+  .content{position:relative;z-index:1}
+
+  /* Door overlay */
+  .door-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;pointer-events:none;display:none}
+  .door-overlay.active{display:block;pointer-events:all}
+  .door-left,.door-right{position:absolute;top:0;bottom:0;width:50%;background:var(--bg-hot)}
+  .door-left{left:0;border-right:1px solid rgba(196,113,59,.15)}
+  .door-right{right:0;border-left:1px solid rgba(196,113,59,.15)}
+  .door-left.open{animation:doorLeft 1.8s cubic-bezier(.77,0,.18,1) forwards}
+  .door-right.open{animation:doorRight 1.8s cubic-bezier(.77,0,.18,1) forwards}
+  .door-light{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.97);animation:lightFlood 3s ease-out forwards}
+  .door-handle{position:absolute;top:50%;width:3px;height:40px;background:rgba(196,113,59,.3);border-radius:2px}
+  .door-left .door-handle{right:20px;transform:translateY(-50%)}
+  .door-right .door-handle{left:20px;transform:translateY(-50%)}
+  .door-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--serif);font-size:clamp(1rem,3vw,1.4rem);color:rgba(245,240,235,.3);letter-spacing:.3em;text-transform:uppercase;white-space:nowrap}
+
+  /* Nav buttons */
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid rgba(245,240,235,.05)}
+  .nav-btn{background:transparent;color:var(--muted-hot);border:1px solid rgba(245,240,235,.1);padding:.6rem 1.5rem;font-size:.65rem;letter-spacing:.2em;cursor:pointer;text-transform:uppercase;transition:all .3s ease}
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .nav-btn.primary{border-color:var(--accent);color:var(--accent)}
+  .nav-btn.primary:hover{background:var(--accent);color:var(--bg-hot)}
+  .nav-btn:disabled{opacity:.2;pointer-events:none}
+  .nav-counter{font-size:.6rem;letter-spacing:.2em;color:rgba(245,240,235,.2)}
+
+  /* ═══ Gaikiyoku — ふわり〜〜〜っとした外気浴 ═══ */
+  @keyframes gaiDrift{0%{transform:translateY(0) translateX(0) scale(1);opacity:0}8%{opacity:1}85%{opacity:.3}100%{transform:translateY(-105vh) translateX(30px) scale(1.6);opacity:0}}
+  @keyframes gaiDriftSlow{0%{transform:translateY(0) translateX(0) scale(1);opacity:0}6%{opacity:.5}75%{opacity:.15}100%{transform:translateY(-95vh) translateX(-25px) scale(2);opacity:0}}
+  @keyframes skyBreathe{0%,100%{opacity:.5}50%{opacity:.8}}
+  @keyframes windStreak{0%{transform:translateX(-100%);opacity:0}15%{opacity:1}50%{opacity:.5}100%{transform:translateX(100vw);opacity:0}}
+  @keyframes gentleSway{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-8px) rotate(.3deg)}}
+  @keyframes sunRay{0%,100%{opacity:.06}50%{opacity:.14}}
+  @keyframes floatSection{from{opacity:0;transform:translateY(60px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+  .gai-particle{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+  .gai-particle--orb{background:radial-gradient(circle,rgba(74,158,136,.12),rgba(74,158,136,.02) 60%,transparent);filter:blur(4px);animation:gaiDrift linear infinite}
+  .gai-particle--large{background:radial-gradient(circle,rgba(74,158,136,.06),rgba(126,196,176,.02) 50%,transparent);filter:blur(20px);animation:gaiDriftSlow linear infinite}
+  .gai-particle--light{background:radial-gradient(circle,rgba(255,255,255,.5),rgba(255,255,255,.08) 60%,transparent);filter:blur(3px);animation:gaiDrift linear infinite}
+  .gai-particle--dust{background:rgba(42,58,52,.08);filter:blur(1px);animation:gaiDrift linear infinite}
+
+  /* Sky — 明るい空、柔らかい光 */
+  .gai-sky{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;opacity:0;transition:opacity 2.5s ease}
+  .gai-sky.active{opacity:1}
+  .gai-sky__gradient{position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,230,220,.5) 0%,rgba(242,247,244,.2) 40%,transparent 65%);animation:skyBreathe 10s ease-in-out infinite}
+  .gai-sky__moonbeam{position:absolute;top:-10%;right:10%;width:300px;height:140vh;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(74,158,136,.02) 60%,transparent);transform:rotate(12deg);transform-origin:top center;animation:sunRay 8s ease-in-out infinite}
+  .gai-sky__moonbeam2{position:absolute;top:-10%;left:15%;width:220px;height:120vh;background:linear-gradient(180deg,rgba(74,158,136,.06),transparent);transform:rotate(-8deg);transform-origin:top center;animation:sunRay 12s ease-in-out infinite;animation-delay:4s}
+  /* Wind — ふわりと流れる風 */
+  .gai-wind{position:fixed;pointer-events:none;z-index:0;height:1px;background:linear-gradient(90deg,transparent,rgba(74,158,136,.1) 30%,rgba(74,158,136,.04) 70%,transparent);animation:windStreak linear infinite}
+  .gai-wind--wide{position:fixed;pointer-events:none;z-index:0;height:3px;background:linear-gradient(90deg,transparent,rgba(74,158,136,.06) 20%,rgba(126,196,176,.03) 80%,transparent);animation:windStreak linear infinite;filter:blur(1px)}
+</style>
+</head>
+<body>
+<div class="steam-container" id="steamBox"></div>
+<div class="heat-overlay" id="heatOverlay"></div>
+<!-- Gaikiyoku sky overlay (hidden until door opens) -->
+<div class="gai-sky" id="gaiSky">
+  <div class="gai-sky__gradient"></div>
+  <div class="gai-sky__moonbeam"></div>
+  <div class="gai-sky__moonbeam2"></div>
+</div>
+<div class="door-overlay" id="doorOverlay">
+  <div class="door-left" id="doorL"><div class="door-handle"></div></div>
+  <div class="door-right" id="doorR"><div class="door-handle"></div></div>
+  <div class="door-text" id="doorText"></div>
+</div>
+<div class="content" id="app"></div>
+
+<script>
+// ─── STEAM INIT ────────────────────────────────────
+(function(){
+  const box=document.getElementById('steamBox');
+  // ─── ブワ〜〜〜ッ ─── 重なり合う湯気
+  // spread: 巨大な熱波。画面幅の30-60%を覆う塊が重なり合う。
+  const spreads=[
+    {x:'-5%', b:'-5%',sz:450,dur:8,  phase:.1},
+    {x:'30%', b:'-8%',sz:500,dur:9,  phase:.35},
+    {x:'60%', b:'-3%',sz:420,dur:7.5,phase:.6},
+    {x:'10%', b:'-6%',sz:480,dur:10, phase:.85},
+    {x:'45%', b:'-4%',sz:520,dur:8.5,phase:.2},
+    {x:'75%', b:'-7%',sz:460,dur:9.5,phase:.5},
+    {x:'20%', b:'-2%',sz:400,dur:7,  phase:.75},
+    {x:'55%', b:'-5%',sz:490,dur:8,  phase:.45},
+    {x:'-10%',b:'-3%',sz:440,dur:9,  phase:.9},
+  ];
+  spreads.forEach(c=>{
+    const s=document.createElement('div');s.className='steam-spread';
+    s.style.left=c.x;s.style.bottom=c.b;
+    s.style.width=c.sz+'px';s.style.height=c.sz+'px';
+    s.style.animationDuration=c.dur+'s';
+    // 負のdelayでアニメ途中からスタート（最初から自然にバラけている）
+    s.style.animationDelay=(-c.dur*c.phase)+'s';
+    box.appendChild(s);
+  });
+  // wander: spreadの隙間を埋めるように漂う
+  const wanders=[
+    {x:'15%', b:'5%', sz:350,dur:11, phase:.15},
+    {x:'50%', b:'2%', sz:380,dur:12, phase:.4},
+    {x:'5%',  b:'8%', sz:320,dur:10, phase:.65},
+    {x:'70%', b:'3%', sz:360,dur:11.5,phase:.3},
+    {x:'35%', b:'6%', sz:400,dur:13, phase:.8},
+    {x:'80%', b:'4%', sz:340,dur:10.5,phase:.55},
+    {x:'25%', b:'1%', sz:370,dur:12.5,phase:.1},
+  ];
+  wanders.forEach(c=>{
+    const s=document.createElement('div');s.className='steam-wander';
+    s.style.left=c.x;s.style.bottom=c.b;
+    s.style.width=c.sz+'px';s.style.height=c.sz+'px';
+    s.style.animationDuration=c.dur+'s';
+    s.style.animationDelay=(-c.dur*c.phase)+'s';
+    box.appendChild(s);
+  });
+  // breathe: 画面全体を覆う巨大な暖気の層
+  [
+    {x:'-10%',y:'30%',w:600,h:400,dur:8,phase:.2},
+    {x:'30%', y:'20%',w:550,h:350,dur:7,phase:.6},
+    {x:'10%', y:'50%',w:500,h:380,dur:9,phase:.9},
+  ].forEach(c=>{
+    const s=document.createElement('div');s.className='steam-breathe';
+    s.style.left=c.x;s.style.top=c.y;
+    s.style.width=c.w+'px';s.style.height=c.h+'px';
+    s.style.animationDuration=c.dur+'s';
+    s.style.animationDelay=(-c.dur*c.phase)+'s';
+    box.appendChild(s);
+  });
+})();
+
+// ─── DATA ──────────────────────────────────────────
+/* ═══ 6軸 SCORING FRAMEWORK ═══════════════════════════
+  サウナ体験の多面的分析に基づく6次元プロファイル：
+  ┌─ 身体 ──────────────────────────────────────────┐
+  │ autonomic  自律神経力     温冷交代浴への適応力・HSP応答                 │
+  │            — 参考: Laukkanen et al.(2015) JAMA Internal Medicine        │
+  │ recovery   深層回復力     副交感神経優位への移行・深部体温サイクリング  │
+  │            — 参考: Hussain & Cohen(2018) 冷水浸漬と身体回復            │
+  ├─ 心理 ──────────────────────────────────────────┤
+  │ sensory    感覚開放度     五感で熱を味わう傾向                         │
+  │            — 参考: Big Five 開放性 / Csikszentmihalyi フロー理論       │
+  │ social     社会的距離感   孤独の聖域 vs 裸のコミュニティ               │
+  │            — 参考: Hall 近接学 / フィンランド入浴文化研究              │
+  ├─ 哲学 ──────────────────────────────────────────┤
+  │ introspect 内省深度       熱の中での瞑想・自己対話の深さ               │
+  │            — 参考: Kabat-Zinn マインドフルネス研究                     │
+  │ ritual     儀式性         日常→非日常→再統合の通過儀礼的体験          │
+  │            — 参考: Turner リミナリティ理論                             │
+  └─────────────────────────────────────────────────┘
+  ※各参考文献はこの分野の代表的研究であり、本診断はそれらの知見を
+    参考にした体験的フレームワークです。臨床的診断ではありません。
+
+  ═══ 質問設計原則 ═══
+  各質問に「主軸」(最大スコア差3)と「副軸」(差1-2)を割当て、
+  7問×6軸の42セルで6タイプを最大限に分離する。
+  Q1: 主軸=ritual（頻度は儀式性を最もよく反映）
+  Q2: 主軸=autonomic（求める熱の強度＝身体の限界設定）
+  Q3: 主軸=introspect vs social（内向/外向の最大分離点）
+  Q4: 主軸=sensory + ritual（美意識＝感覚と儀式の交差点）
+  Q5: 主軸=social（自己の見せ方＝社会的志向の直接表現）
+  Q6: 主軸=autonomic（実用的な断熱ニーズ＝身体指標）+ recovery
+  Q7: 主軸=sensory + recovery（空間選好＝感覚と回復の環境設定）
+*/
+const QUESTIONS=[
+  {id:"rhythm",label:"01",question:"サウナとの距離感は？",subtext:"あなたの生活リズムを教えてください",bg:"radial-gradient(ellipse at 30% 80%,rgba(196,113,59,.06),transparent 50%)",options:[
+    {id:"daily",text:"ほぼ毎日。歯を磨くように通う",sub:"日常の一部として",scores:{autonomic:3,recovery:1,sensory:0,social:1,introspect:0,ritual:0}},
+    {id:"weekly",text:"週2〜3回。自分のペースで",sub:"ルーティンとして",scores:{autonomic:2,recovery:2,sensory:1,social:1,introspect:1,ritual:1}},
+    {id:"weekend",text:"週末に遠征。特別な体験として",sub:"非日常の探求",scores:{autonomic:1,recovery:0,sensory:3,social:2,introspect:0,ritual:2}},
+    {id:"ritual",text:"月1〜2回。儀式のように整う",sub:"神聖な時間",scores:{autonomic:0,recovery:2,sensory:1,social:0,introspect:3,ritual:3}}]},
+  {id:"heat",label:"02",question:"求める「熱」の質は？",subtext:"身体が欲する温度帯を選んでください",bg:"radial-gradient(ellipse at 70% 30%,rgba(220,80,30,.08),transparent 50%)",options:[
+    {id:"extreme",text:"100℃超。灼熱のドライサウナ",sub:"限界の向こう側へ",scores:{autonomic:3,recovery:1,sensory:0,social:0,introspect:2,ritual:1}},
+    {id:"steam",text:"70〜80℃。蒸気が肌を包むスチーム",sub:"しっとりとした熱",scores:{autonomic:1,recovery:2,sensory:3,social:0,introspect:1,ritual:1}},
+    {id:"bona",text:"60〜70℃。低温高湿のボナサウナ",sub:"やさしく深く",scores:{autonomic:0,recovery:3,sensory:2,social:0,introspect:2,ritual:2}},
+    {id:"outdoor",text:"テントサウナ。自然の中の熱",sub:"風と火の対話",scores:{autonomic:2,recovery:1,sensory:3,social:2,introspect:1,ritual:3}}]},
+  {id:"time",label:"03",question:"サウナ室での時間の過ごし方は？",subtext:"熱の中で、あなたは何をしていますか",bg:"radial-gradient(ellipse at 50% 50%,rgba(196,113,59,.05),transparent 50%)",options:[
+    {id:"meditate",text:"目を閉じる。自分と向き合う瞑想の時間",sub:"内なる静寂",scores:{autonomic:1,recovery:2,sensory:0,social:0,introspect:3,ritual:2}},
+    {id:"focus",text:"12分計を見つめ、呼吸に集中する",sub:"ストイックな集中",scores:{autonomic:3,recovery:1,sensory:0,social:0,introspect:2,ritual:0}},
+    {id:"social",text:"友人と語る。サウナは社交の場",sub:"裸の付き合い",scores:{autonomic:0,recovery:0,sensory:1,social:3,introspect:0,ritual:1}},
+    {id:"explore",text:"ロウリュを浴び、五感で楽しむ",sub:"体験の探求者",scores:{autonomic:1,recovery:0,sensory:3,social:1,introspect:0,ritual:2}}]},
+  {id:"aesthetic",label:"04",question:"あなたの「纏い方」に近いのは？",subtext:"日常のスタイルから、美意識を読み取ります",bg:"radial-gradient(ellipse at 20% 60%,rgba(180,140,100,.06),transparent 50%)",options:[
+    {id:"minimal",text:"無彩色。引き算の美学",sub:"Less is more",scores:{autonomic:1,recovery:0,sensory:0,social:0,introspect:3,ritual:1}},
+    {id:"street",text:"ストリート。機能と遊び心の融合",sub:"都市の空気を纏う",scores:{autonomic:1,recovery:0,sensory:2,social:3,introspect:0,ritual:0}},
+    {id:"organic",text:"天然素材。肌触りと経年変化を愛する",sub:"時間が育てるもの",scores:{autonomic:0,recovery:2,sensory:3,social:0,introspect:1,ritual:3}},
+    {id:"tech",text:"テックウェア。高機能プロダクト志向",sub:"機能美の追求",scores:{autonomic:3,recovery:0,sensory:1,social:1,introspect:0,ritual:0}}]},
+  {id:"silhouette",label:"05",question:"鏡に映る自分。どの印象を強めたい？",subtext:"サウナハットは顔の「額縁」です",bg:"radial-gradient(ellipse at 80% 40%,rgba(196,113,59,.05),transparent 50%)",options:[
+    {id:"sharp",text:"シャープに。輪郭を引き締めたい",sub:"エッジの効いた存在感",scores:{autonomic:2,recovery:0,sensory:1,social:1,introspect:1,ritual:0}},
+    {id:"soft",text:"柔らかく。角を取って穏やかに",sub:"リラックスした空気",scores:{autonomic:0,recovery:3,sensory:2,social:0,introspect:2,ritual:1}},
+    {id:"presence",text:"存在感。被るだけで空気を変えたい",sub:"一目で伝わる",scores:{autonomic:1,recovery:0,sensory:2,social:3,introspect:0,ritual:2}},
+    {id:"stealth",text:"溶け込む。自然体でいたい",sub:"空間と一体になる",scores:{autonomic:0,recovery:1,sensory:0,social:0,introspect:3,ritual:1}}]},
+  {id:"hair",label:"06",question:"髪との関係性は？",subtext:"熱から守るべきものを把握します",bg:"radial-gradient(ellipse at 40% 70%,rgba(160,120,80,.06),transparent 50%)",options:[
+    {id:"damage",text:"カラーやパーマ。ダメージが気になる",sub:"繊細な髪を守る",scores:{autonomic:0,recovery:3,sensory:2,social:0,introspect:0,ritual:1}},
+    {id:"long",text:"ロングヘア。まとめて守りたい",sub:"髪も一緒にサウナへ",scores:{autonomic:0,recovery:2,sensory:1,social:0,introspect:1,ritual:2}},
+    {id:"short",text:"ショート。気軽に被りたい",sub:"身軽さが正義",scores:{autonomic:2,recovery:0,sensory:0,social:3,introspect:0,ritual:0}},
+    {id:"none",text:"スキンヘッド。頭皮を直接守る",sub:"ダイレクトな防御",scores:{autonomic:3,recovery:0,sensory:1,social:0,introspect:1,ritual:0}}]},
+  {id:"sanctuary",label:"07",question:"理想のサウナ空間は？",subtext:"あなたが「整う」ための舞台を選んでください",bg:"radial-gradient(ellipse at 60% 30%,rgba(196,113,59,.07),transparent 50%)",options:[
+    {id:"concrete",text:"コンクリート打ちっぱなし。都市の静寂",sub:"無機質の中の安息",scores:{autonomic:1,recovery:0,sensory:1,social:0,introspect:3,ritual:1}},
+    {id:"wood",text:"木の香り。フィンランドの森のように",sub:"白樺とロウリュ",scores:{autonomic:1,recovery:3,sensory:3,social:0,introspect:1,ritual:3}},
+    {id:"neon",text:"ネオンと音楽。新しいカルチャー",sub:"サウナ×エンタメ",scores:{autonomic:1,recovery:0,sensory:2,social:3,introspect:0,ritual:0}},
+    {id:"sento",text:"銭湯の一角。地域に根ざした熱",sub:"街と生きるサウナ",scores:{autonomic:1,recovery:2,sensory:0,social:2,introspect:0,ritual:2}}]}
+];
+
+const ARCHETYPES={
+  silent_minimalist:{name:"Silent Minimalist",nameJa:"沈黙のミニマリスト",subtitle:"引き算の先にある、本質的な熱との対話",description:"あなたの回答を見ると、「内省深度」と「自律神経の安定力」がとても高く出ています。これは、サウナに楽しさや交流よりも、自分の内側と向き合う静けさを求めている方に多い傾向です。おそらくサウナ室では自然と目を閉じて、呼吸のリズムだけに意識が向いていくのではないでしょうか。そのとき脳の中では、普段使いすぎている情報処理の回路が休まり、代わりに内省や創造性に関わる領域が活性化しています。つまりあなたは、サウナ室を無意識に「瞑想空間」として使えている方です。あなたにとってサウナは「足す」場所ではなく「引く」場所。余計な装飾も音楽も会話もいらない。熱と自分だけの時間が、最高の贅沢になります。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「内省深度」と「自律神経力」が突出しています。この2軸が高い方は、サウナを「自分と向き合う時間」として使う傾向が強く、外的な刺激よりも内的な静けさに価値を感じます。社会性や感覚開放度が控えめなのも、一人の時間を大切にしている証です。",
+    hatIntro:"あなたのように外部刺激を遮断して自分の内側に集中したい方には、深めに被れて視界を適度にカットできるハットが合います。素材は断熱性に優れたメリノウール。極細の繊維が空気の層をつくるので、100℃超の環境でも頭をしっかり守ってくれます。",
+    hat:{material:"メリノウール 100%（17.5μm エクストラファイン）",shape:"クラシックチューリップ型 / 深めのクラウン",color:"チャコールグレー / スレートブラック",materialLogic:"メリノウールの極細繊維（17.5μm）が形成するキューティクル構造は、繊維間に大量の不動空気層を生み出し、100℃超の環境でも頭部表面温度を約40℃以下に保つ。",shapeLogic:"深めのクラウンは側頭部まで熱をカバーし、視界を適度に遮ることで外部刺激を遮断。あなたの「内省モード」への没入を物理的にサポートする。",colorLogic:"チャコールグレーは、コンクリートの壁面やモルタルの質感と調和し、あなたの存在を空間に溶け込ませる。",buyText:"Primal Blue — サウナハット「流」メリノウール100%",buyUrl:"https://primalblue.thebase.in/items/87970639"},
+    facilityIntro:"あなたは余計な刺激を排して、熱と自分だけの時間を大切にするタイプです。そんなあなたには、空間設計そのものが「引き算」でできている施設が合います。",
+    facilities:[{name:"サウナ&カプセルホテル北欧",area:"台東区・上野",type:"Legend Sauna",temp:"90-100℃",humidity:"Medium",vibe:"東京サウナの原点",context:"都会の風に吹かれながらととのう外気浴は、この施設だけの特権。余計な演出は一切なく、サウナと自分だけの時間が静かに流れる。東京サウナの聖地と呼ばれる理由は、入ればわかる。",mapUrl:"https://maps.google.com/?q=サウナ%26カプセルホテル北欧+上野",webUrl:"https://www.saunahokuou.com/"},{name:"天空のアジト マルシンスパ",area:"渋谷区・笹塚",type:"Rooftop Sauna",temp:"90-100℃",humidity:"Medium（セルフロウリュ）",vibe:"ビル10Fの孤高の空間",context:"笹塚駅徒歩1分、ビル最上階。セルフロウリュで自分のペースで熱を操り、屋上で空だけを見上げる。都市の真ん中にいながら、誰にも邪魔されない「自分だけのアジト」。",mapUrl:"https://maps.google.com/?q=マルシンスパ+笹塚",webUrl:"https://marushinspa.jp/"}],
+    center:{autonomic:1.5,recovery:1.0,sensory:0.5,introspect:2.5,social:0.3,ritual:1.2},ritual:"サウナ12分→水風呂1分→外気浴10分を3セット。最後のセットは目を閉じて瞑想。"},
+  urban_nomad:{name:"Urban Nomad",nameJa:"都市の遊牧民",subtitle:"街から街へ。サウナを巡る終わりなき旅路",description:"あなたの回答を見ると、「社会性」と「感覚の開放度」が高く、「内省深度」は控えめです。これは、同じ場所に通い続けるよりも新しい施設を開拓するほうがワクワクする方に典型的なパターンです。水風呂の水温、外気浴での風の抜け方——施設ごとの違いを自分の身体で比べること自体が楽しいのではないでしょうか。こうした傾向は心理学では「新奇性追求」と呼ばれていて、新しい刺激に触れることでエネルギーが湧くタイプの方に見られます。面白いのは、あなたの場合は移動そのものもストレス解消になっていること。電車に揺られてサウナへ向かう時間から、もう気持ちの切り替えが始まっています。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「社会性」と「感覚開放度」が高く、「内省深度」は控えめです。これは、同じ場所に留まるより次々と新しい体験を求めるタイプに典型的なパターン。施設ごとの違いを身体で比較すること自体がエネルギー源になっています。",
+    hatIntro:"施設をハシゴするあなたには、カバンに入れて持ち歩ける軽さと、どんなサウナでも対応できる汎用性が大事です。リネン素材なら乾きが早く、折りたたんでもすぐ形が戻ります。移動が多いあなたのスタイルに最も合うハットです。",
+    hat:{material:"リネン×3Dメッシュ ハイブリッド構造",shape:"バケットハット型 / 折りたたみ可能",color:"サンドベージュ / オリーブ",materialLogic:"リネン（亜麻）の多孔質構造は、湿度を素早く外部に放出し、蒸れを60%低減。内部の3Dメッシュ層が追加の空気断熱層を形成し、幅広い環境に対応する。",shapeLogic:"バケット型の広めのブリムは、ロウリュの蒸気から耳と首筋を守る。折りたたみ可能な設計は、あなたのバッグに常に忍ばせておける。",colorLogic:"サンドベージュは木質空間にもコンクリート空間にも調和するニュートラルトーン。",buyText:"BATHLIER — リネンサウナハット 37",buyUrl:"https://shop.bathlier.com/products/sauna-7008-340503"},
+    facilityIntro:"新しい施設を開拓すること自体がサウナの楽しみであるあなたには、個性がまったく違う2つの施設をおすすめします。それぞれの違いを、ぜひ自分の身体で比べてみてください。",
+    facilities:[{name:"黄金湯",area:"墨田区・錦糸町",type:"Renovated Sentō",temp:"90-100℃",humidity:"High（オートロウリュ）",vibe:"下町×ニューウェーブ",context:"下町の銭湯が生まれ変わった、東京サウナカルチャーの震源地。国産ヒバの香り高いサウナ室に高頻度のオートロウリュ、軟水の水風呂。銭湯のレベルを超えた一軒。",mapUrl:"https://maps.google.com/?q=黄金湯+錦糸町",webUrl:"https://koganeyu.com/"},{name:"松本湯",area:"新宿区・落合",type:"Renovated Sentō",temp:"95-105℃",humidity:"Medium-High（オートロウリュ）",vibe:"広さと深さの銭湯サウナ",context:"20人収容の広々サウナに20分おきのオートロウリュ。水風呂は150cm、身体がすっぽり沈む深さ。黄金湯とはまったく違う個性を、ぜひ自分の身体で比べてほしい。",mapUrl:"https://maps.google.com/?q=松本湯+落合",webUrl:"https://www.matsumoto-yu.com/"}],
+    center:{autonomic:1.8,recovery:0.5,sensory:1.8,introspect:0.3,social:2.5,ritual:0.5},ritual:"行く先々で1セット。サウナ8分→水風呂→外気浴。ハシゴ前提の身軽なセット。"},
+  sauna_architect:{name:"Sauna Architect",nameJa:"設計者の眼",subtitle:"空間を読み解き、熱を設計する知性",description:"あなたの回答では「感覚の開放度」と「儀式性」が際立って高く出ています。おそらくサウナ室に入った瞬間、天井の高さやストーブの位置、蒸気の流れ方が気になる方ではないでしょうか。同じ90℃でも、カラカラの乾式とロウリュの湿式では身体への作用がまったく違いますが、それを理屈ではなく肌で理解されている。こうした方はサウナを「温度」ではなく「空間体験」として捉えている傾向があります。入室時間も水風呂の秒数も外気浴のポジションも、すべてにご自身なりの理由がある。それは几帳面なのではなく、知的好奇心の表れです。「なぜこの配置なのか」を考えること自体が、あなたにとっての整いの一部になっています。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「感覚開放度」と「儀式性」が際立って高く出ています。これは、サウナを「温度」ではなく「空間体験」として捉えている方の特徴です。入室時間も水風呂の秒数も、すべてにご自身なりの理由がある——分析と実践を両立できるタイプです。",
+    hatIntro:"空間の細部まで観察するあなたには、構造的に美しく、型崩れしにくいハットが合います。高密度に圧縮されたウールフェルトは、建築のように「設計された形」をしっかり保ちます。見た目の美しさと機能性、両方を満たせるハットです。",
+    hat:{material:"ウールフェルト（圧縮密度 0.28g/cm³）",shape:"ストラクチャード・ベル型 / 深めブリム",color:"スモークグレー / ダークネイビー",materialLogic:"高密度圧縮フェルト（0.28g/cm³）は、ウールの断熱性を最大化しつつ、型崩れしにくい構造的な強度を持つ。",shapeLogic:"ベル型のシルエットは建築的な美しさを持ち、面長の顔には横の広がりを、丸顔には縦のラインを与える万能なフォルム。",colorLogic:"スモークグレーは、照明の色温度によって微妙に表情を変える。暗いサウナ室ではほぼ黒に、明るいロビーではグレーの奥行きが現れる。",buyText:"サウナイキタイSTORE — ウールサウナハット（日本製・ウール100%）",buyUrl:"https://sauna-ikitai.stores.jp/items/65435a015d272d065dbda37f"},
+    facilityIntro:"空間の構造や設計思想に目が行くあなたには、建築家が本気で手がけた施設が響くはずです。「なぜこの配置なのか」「なぜこの素材なのか」を読み解く楽しさがあります。",
+    facilities:[{name:"渋谷SAUNAS",area:"渋谷区・桜丘",type:"Designer Sauna",temp:"80-100℃",humidity:"Medium",vibe:"コンクリート×木のモダニズム",context:"LAMPI（蒸気×暗闇）とWOODS（木×自然光）、2つのコンセプトを同一建築に収めた設計。水風呂も160cm深型と浅型の2種。「なぜこの設計なのか」を読み解くフィールド。",mapUrl:"https://maps.google.com/?q=渋谷SAUNAS",webUrl:"https://saunas-saunas.com/shibuya/"},{name:"ROOFTOP",area:"杉並区・西荻窪",type:"Finnish Sauna",temp:"90-100℃",humidity:"High（オートロウリュ）",vibe:"対流計算されたペントハウス",context:"壁から天井まで国産ヒノキ。対流を綿密に計算されたスタジアム型サウナ室に、特注の巨大オリジナルストーブ。屋上のパーソナル水風呂という新しい設計。空間を「読む」あなたの知的好奇心を満たす一軒。",mapUrl:"https://maps.google.com/?q=ROOFTOP+西荻窪",webUrl:"https://rooftopsauna.jp/"}],
+    center:{autonomic:1.2,recovery:1.5,sensory:2.5,introspect:1.5,social:0.5,ritual:2.5},ritual:"サウナ10分→水風呂90秒→外気浴15分。空間を観察しながら、最適なポジションを探す。"},
+  fire_keeper:{name:"Fire Keeper",nameJa:"炎の番人",subtitle:"最も過酷な熱を求め、最も静かに耐える",description:"あなたの回答を見ると、「自律神経の安定力」が群を抜いて高く、「内省深度」も深く出ています。これは、サウナを快楽やリラクゼーションではなく、自分の限界を静かに確かめる場として使っている方に見られるパターンです。100℃超の最上段を選んで、周りが退出しても座り続けられるのは、決して無謀ではありません。身体の信号を正確に読む力があるからこそできることです。繰り返しサウナに入ることで体温調節の能力が鍛えられ、発汗のタイミングが早く、心拍の上がり方も穏やかになっていく。身体がサウナに適応している証拠です。こうした方は心理学的に見ても、ストレスに「正面から向き合う」ことで乗り越える傾向が強い。熱に耐えることで精神の芯が整っていく感覚は、いわば現代の修行に近いものがあります。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「自律神経力」が群を抜いて高く、「内省深度」も深い。社会性と儀式性が低いのは、他人の目や作法ではなく、自分の身体の信号だけを頼りにしている証拠です。ストレスに正面から向き合うことで乗り越える——その強さがチャートに表れています。",
+    hatIntro:"100℃超の最上段に座り続けるあなたには、とにかく防御力の高いハットが必要です。二重構造で外側が蒸気を弾き、内側が断熱する——実戦仕様のものをおすすめします。頭部を完全にカバーするヘルメット型なので、熱波も正面から受け止められます。",
+    hat:{material:"二重構造（外層: 撥水ポリエステル / 内層: 抗菌メッシュ断熱層）",shape:"ディープクラウン・ヘルメット型 / 2WAY着用",color:"マットブラック",materialLogic:"外層の撥水ポリエステルがロウリュの蒸気を弾き、内層の抗菌メッシュが空気断熱層を形成。軽量かつパッカブルで、110℃環境でも頭部を保護する実戦仕様。",shapeLogic:"ヘルメット型は額から後頭部、耳までを完全にカバーする最大防御シルエット。通常モードと没入モードの2WAY着用に対応。",colorLogic:"マットブラックは熱を吸収するが、撥水層がそれを無力化する。漆黒のシルエットは、サウナ室での圧倒的な存在感を生む。",buyText:"TTNE — New-Standard サウナハット（2WAY・ブラック）",buyUrl:"https://www.ttne.shop/products/ttne-new-standard-sauna-hat"},
+    facilityIntro:"高温に耐える力と、身体の信号を正確に読む力を持つあなたには、温度・設備ともに最高水準の施設をおすすめします。ここなら、あなたの実力を存分に発揮できます。",
+    facilities:[{name:"サウナ&ホテル かるまる池袋",area:"豊島区・池袋",type:"Premium Sauna",temp:"85-110℃",humidity:"Variable（4種のサウナ）",vibe:"サウナの殿堂",context:"薪サウナ、蒸気サウナ、ケロサウナ、そして約7℃の極冷水風呂「サンダートルネード」。4種のサウナと都内最強クラスの水風呂を持つ、あなたの実力が試される施設。",mapUrl:"https://maps.google.com/?q=かるまる池袋",webUrl:"https://karumaru.jp/ikebukuro/"},{name:"サウナセンター",area:"台東区・鶯谷",type:"Classic Sauna",temp:"90-110℃",humidity:"Low-Dry",vibe:"1979年創業・東京最古のサウナ",context:"余計な装飾を一切排した、東京で最も古いサウナ。高温ドライの硬派な空間で、ただ黙って熱と向き合う。ここには「映え」も「エンタメ」もない——熱に耐え抜く者だけが知る世界がある。",mapUrl:"https://maps.google.com/?q=サウナセンター+鶯谷",webUrl:"https://sauna-center.jp/"}],
+    center:{autonomic:2.8,recovery:1.2,sensory:0.8,introspect:1.8,social:0.3,ritual:0.8},ritual:"サウナ15分（最上段）→水風呂2分→外気浴5分。限界を超えた先の静寂を味わう。"},
+  zen_healer:{name:"Zen Healer",nameJa:"禅の癒し手",subtitle:"低温の蒸気に身を委ね、細胞ごと生まれ変わる",description:"あなたの回答では「深層回復力」と「儀式性」がとても高く出ています。高温で一気に攻めるより、70〜85℃くらいの中低温で、じわじわと身体の芯まで熱が染みわたる感覚を大切にされる方ではないでしょうか。実はこの温度帯は、細胞の修復を助けるタンパク質（ヒートショックプロテイン）が最も効率よく作られる領域です。あなたの身体は、それを理屈ではなく感覚で知っているのかもしれません。木の香り、蒸気の湿り気、肌に触れる空気の質感——こうした五感の情報をすべて受け取りながらサウナを味わえるのは、感受性の高い方の特徴です。外気浴の時間が長めなのも納得で、風が頬を撫で、身体が内側からゆるんでいく——その「ゆっくり切り替わっていく時間」こそが、あなたにとっての本当の整いになっています。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「深層回復力」と「儀式性」がとても高く、「自律神経力」は控えめです。高温で攻めるよりも、中低温でじっくり身体の芯まで温まるスタイル。五感の情報をすべて受け取りながらサウナを味わえる、感受性の高さがチャートに表れています。",
+    hatIntro:"自然な感覚を大切にするあなたには、肌触りがやわらかく、使うほどに馴染む天然素材のハットが合います。リネンとコットンのブレンド素材は、洗うたびにやわらかくなっていく。道具に愛着を持てるタイプのあなたにぴったりです。",
+    hat:{material:"リネン59%×コットン41%（天然繊維ブレンド）",shape:"ソフトコーン型 / ゆったりクラウン",color:"ナチュラルリネン（生成り）",materialLogic:"リネンの吸湿速乾性とコットンの肌触りを掛け合わせた天然繊維ブレンド。リネンの吸湿性はコットンの4倍。洗うたびに柔らかくなる経年変化は、愛着を育む。",shapeLogic:"ソフトコーン型は顔に柔らかな印象を与え、リラックスした空気を纏う。ゆったりしたクラウンは視界を確保し、外気浴でもそのまま被れる。",colorLogic:"生成りは漂白されていないリネン本来の色。あなたの「素のまま」でいたいという価値観を体現する。",buyText:"Sauna Soppi — リネンサウナハット（フィンランドデザイン）",buyUrl:"https://saunasoppi.shop/items/5ed8b1825157626a2c2d29a8"},
+    facilityIntro:"じっくり身体の芯まで温まることを大切にするあなたには、「癒し」に特化した空間設計の施設が合います。高温で攻めるのではなく、湿度と温度のバランスが整った場所です。",
+    facilities:[{name:"改良湯",area:"渋谷区・恵比寿",type:"Renovated Sentō",temp:"80-95℃",humidity:"Medium-High（オートロウリュ）",vibe:"アーティスティックな癒しの銭湯",context:"恵比寿の住宅街に佇む老舗銭湯をリノベーション。オートロウリュ搭載のサウナと外気浴スペースを備え、アートと癒しが融合した空間。1000円で味わえる贅沢な整い。",mapUrl:"https://maps.google.com/?q=改良湯+恵比寿",webUrl:"https://kairyou-yu.com/"},{name:"TAKAO 36 SAUNA",area:"八王子・高尾山麓",type:"Nature Sauna",temp:"80-95℃",humidity:"High（Harvia製ストーブ）",vibe:"山と水と炎の癒し処",context:"高尾山の麓で、山の地下水を使った水風呂に浸かり、鳥のさえずりと川の音に包まれて外気浴をする。季節ごとに変わる空気の匂い、木々の色。五感すべてで自然を受け取れるあなたにとって、ここは最高のヒーリング空間になる。",mapUrl:"https://maps.google.com/?q=TAKAO+36+SAUNA",webUrl:"https://takao36sauna.com/"}],
+    center:{autonomic:0.3,recovery:2.8,sensory:2.2,introspect:2.0,social:0.3,ritual:2.5},ritual:"サウナ8分→水シャワー→外気浴20分。外気浴こそが本番。風を感じ、空を見上げる。"},
+  neon_tribe:{name:"Neon Tribe",nameJa:"ネオンの部族",subtitle:"サウナは遊び場。カルチャーの最前線で汗をかく",description:"あなたの回答を見ると、「社会性」と「感覚の開放度」が突出して高く出ています。サウナは一人で黙って入るものではなく、仲間と体験を共有してこそ楽しい——そう感じている方に多いパターンです。新しい施設のオープンに駆けつけたり、アウフグースイベントのチケットを押さえたり、サウナ飯まで含めて「サウナ体験」になっているのではないでしょうか。照明の色やBGM、アウフグースの演出など、空間の「見せ方」にも敏感で、五感を刺激する要素が多い施設ほどテンションが上がる。これは心理学的に見ると、体験を誰かと共有することで幸福感が何倍にもなるタイプです。あなたにとってサウナは「消費」ではなく、仲間との関係を深める「共有資本」になっています。{{BR}}では、あなたに合うサウナの場所とサウナハットをご案内します。",
+    scoreNarrative:"あなたのプロファイルでは「社会性」と「感覚開放度」が突出していて、「内省深度」と「儀式性」は控えめです。一人で黙って入るより、仲間と体験を共有するほうが何倍も楽しい。空間の演出や五感を刺激する要素に敏感で、体験そのものをエンタメとして楽しめるタイプです。",
+    hatIntro:"サウナ室からラウンジまでシームレスに楽しみたいあなたには、カジュアルに被れてファッション性もあるハットが合います。撥水加工で蒸気を弾きながら、内側は今治タオル素材で汗をしっかり吸収。リバーシブルで気分に合わせて雰囲気も変えられます。",
+    hat:{material:"撥水ポリエステル×今治タオル吸水層（ダントツ撥水®加工）",shape:"バケット型 / リバーシブル対応",color:"マルチカラー展開",materialLogic:"小松マテーレの「ダントツ撥水®」加工がロウリュの蒸気を弾き、内側の今治タオル吸水層が汗を即座に吸収。化学素材メーカーと今治職人技の掛け算。",shapeLogic:"バケット型はカジュアルで、サウナ室からラウンジまでシームレスに移行できる。リバーシブルで気分に合わせて表情を変えられる。",colorLogic:"複数カラー展開で、暗いサウナ室でも視認性が高く、仲間内での識別にもなる。",buyText:"小松マテーレ × kontex — 撥水と吸水サウナハット",buyUrl:"https://www.kontex-shop.com/shopdetail/000000001862/"},
+    facilityIntro:"仲間との体験共有こそサウナの醍醐味であるあなたには、エンターテインメント性が高く、一緒に盛り上がれる施設がおすすめです。行った後に語れる、そんな場所を選びました。",
+    facilities:[{name:"サウナ東京",area:"港区・赤坂",type:"Premium Entertainment",temp:"80-104℃",humidity:"Variable（5種のサウナ）",vibe:"劇場型サウナ・エンターテインメント",context:"5種のサウナ、3種の水風呂、1日6回のアウフグース。畳のととのいスペースで寝そべれば、至福の時間。仲間と「今日のアウフグースやばかった」と語り合える、体験の宝庫。",mapUrl:"https://maps.google.com/?q=サウナ東京+赤坂",webUrl:"https://sauna-tokyo.jp/"},{name:"スカイスパYOKOHAMA",area:"横浜・横浜駅直結",type:"Urban Spa",temp:"65-105℃",humidity:"Variable",vibe:"100人超収容のSAUNA THEATER",context:"15階のSAUNA THEATERは100人超収容。世界レベルのアウフグースパフォーマンスを仲間と体感できる。コワーキングもあるので、サウナ→作業→サウナの遠征が可能。",mapUrl:"https://maps.google.com/?q=スカイスパYOKOHAMA",webUrl:"https://www.skyspa.co.jp/"}],
+    center:{autonomic:1.5,recovery:0.3,sensory:2.2,introspect:0.2,social:2.8,ritual:0.3},ritual:"サウナ6分→水風呂30秒→外気浴は仲間とトーク。楽しさが最大の「整い」。"}
+};
+
+// ─── ENGINE ────────────────────────────────────────
+const AXES=['autonomic','recovery','sensory','introspect','social','ritual'];
+function calcScores(ans){const t={};AXES.forEach(k=>t[k]=0);for(const a of Object.values(ans)){AXES.forEach(k=>t[k]+=a.scores[k]);}const mx=21;const r={};AXES.forEach(k=>r[k]=t[k]/mx*3);return r;}
+/* 正規化ユークリッド距離によるアーキタイプ判定
+   各軸のスコアを0-3スケールで比較し、6次元空間内で
+   ユーザーのプロファイルに最も近い重心を持つタイプを返す。
+   距離が小さい＝フィット度が高い */
+function matchArchetype(sc){let best=null,bestD=Infinity;for(const[k,a]of Object.entries(ARCHETYPES)){let d2=0;for(const ax of AXES){const diff=sc[ax]-a.center[ax];d2+=diff*diff;}if(d2<bestD){bestD=d2;best=k;}}const r=ARCHETYPES[best];r.id=best;return r;}
+
+// ─── RENDER STATE ──────────────────────────────────
+const app=document.getElementById('app');
+const steamBox=document.getElementById('steamBox');
+const heatOv=document.getElementById('heatOverlay');
+let state={phase:'intro',currentQ:0,answers:{},result:null,scores:null,selectedOpt:null};
+
+function render(){
+  if(state.phase!=='result')window.scrollTo({top:0,behavior:'smooth'});
+  switch(state.phase){
+    case'intro':renderIntro();break;
+    case'question':renderQuestion();break;
+    case'analyzing':renderAnalyzing();break;
+    case'door':renderDoor();break;
+    case'result':renderResult();break;
+  }
+}
+
+// ─── INTRO ─────────────────────────────────────────
+function renderIntro(){
+  app.innerHTML=`
+  <div style="animation:fadeIn 1.2s ease-out;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2rem;position:relative">
+    <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(196,113,59,.1) 0%,transparent 70%);filter:blur(40px);animation:slowPulse 4s ease-in-out infinite;pointer-events:none"></div>
+    <div style="max-width:560px;text-align:center;position:relative">
+      <div style="font-size:.5rem;letter-spacing:.6em;color:rgba(245,240,235,.2);margin-bottom:2.5rem;text-transform:uppercase">Sauna Experience Designer</div>
+
+      <h1 style="font-family:var(--serif);font-size:clamp(1.6rem,5vw,2.6rem);font-weight:300;line-height:1.8;margin:0;letter-spacing:.02em;animation:textGlow 4s ease-in-out infinite;max-width:480px">
+        7つの問いから、<wbr><span style="color:var(--accent);white-space:nowrap">あなただけのサウナプラン</span>を<wbr>つくります。
+      </h1>
+
+      <p style="font-family:var(--serif);font-size:.95rem;color:var(--muted-hot);font-style:italic;margin:2rem 0 1.8rem;letter-spacing:.08em;opacity:.7">
+        Your perfect sauna plan, designed by you.
+      </p>
+
+      <p style="font-size:.75rem;color:rgba(245,240,235,.3);line-height:2.2;margin:0 0 2.5rem;letter-spacing:.04em">
+        あなたに合ったサウナ施設、最適なハット、<br>そして「整う」ためのルーティンまで——<br>すべてを一つのプランに。
+      </p>
+
+      <!-- What you'll get -->
+      <div style="display:flex;justify-content:center;gap:2.5rem;margin:2.5rem 0 3rem;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-family:var(--serif);font-size:1.6rem;color:var(--accent);opacity:.5">♨</div>
+          <div style="font-size:.55rem;letter-spacing:.15em;color:var(--muted-hot);margin-top:.4rem">施設ペアリング</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--serif);font-size:1.6rem;color:var(--accent);opacity:.5">◠</div>
+          <div style="font-size:.55rem;letter-spacing:.15em;color:var(--muted-hot);margin-top:.4rem">サウナハット</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--serif);font-size:1.6rem;color:var(--accent);opacity:.5">∿</div>
+          <div style="font-size:.55rem;letter-spacing:.15em;color:var(--muted-hot);margin-top:.4rem">整いルーティン</div>
+        </div>
+      </div>
+
+      <button id="startBtn" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:1rem 3.5rem;font-size:.75rem;letter-spacing:.25em;cursor:pointer;text-transform:uppercase;transition:all .4s ease">
+        診断をはじめる
+      </button>
+      <div style="font-size:.6rem;color:rgba(245,240,235,.18);margin-top:1.2rem;letter-spacing:.1em">所要時間 約2分 / 全7問</div>
+    </div>
+  </div>`;
+  const btn=document.getElementById('startBtn');
+  btn.onmouseenter=()=>{btn.style.background='var(--accent)';btn.style.color='var(--bg-hot)';};
+  btn.onmouseleave=()=>{btn.style.background='transparent';btn.style.color='var(--accent)';};
+  btn.onclick=()=>{state.phase='question';state.currentQ=0;state.answers={};state.selectedOpt=null;render();};
+}
+
+// ─── QUESTION ──────────────────────────────────────
+function renderQuestion(){
+  const q=QUESTIONS[state.currentQ];
+  const progress=((state.currentQ)/QUESTIONS.length)*100;
+  const isFirst=state.currentQ===0;
+  const isLast=state.currentQ===QUESTIONS.length-1;
+  const hasAnswer=!!state.answers[q.id];
+
+  const isReselect=!!state.answers[q.id];
+  app.innerHTML=`
+  <div style="position:fixed;top:0;left:0;right:0;height:1px;background:rgba(245,240,235,.08);z-index:10"><div style="height:100%;background:var(--accent);width:${progress}%;transition:width .6s ease;box-shadow:0 0 8px rgba(196,113,59,.4)"></div></div>
+  <div style="position:fixed;top:0;left:0;right:0;bottom:0;${q.bg};pointer-events:none;transition:all 1s ease"></div>
+  <button id="homeBtn" style="position:fixed;top:1.2rem;left:1.5rem;z-index:11;background:none;border:none;color:rgba(245,240,235,.25);font-size:.6rem;letter-spacing:.15em;cursor:pointer;padding:.3rem .5rem;transition:color .3s ease" onmouseenter="this.style.color='var(--accent)'" onmouseleave="this.style.color='rgba(245,240,235,.25)'">← TOP</button>
+  <div style="${isReselect?'':'animation:slideUp .6s ease-out;'}min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2rem 2rem 3rem;position:relative">
+    <div style="max-width:600px;width:100%">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2.5rem">
+        <div style="font-family:var(--serif);font-size:2.5rem;font-weight:300;color:var(--accent);opacity:.3;line-height:1">${q.label}</div>
+        <div style="font-size:.6rem;letter-spacing:.3em;color:rgba(245,240,235,.2);text-transform:uppercase">${q.label} of 07</div>
+      </div>
+      <h2 style="font-family:var(--serif);font-size:clamp(1.4rem,4vw,2rem);font-weight:300;margin:0 0 .4rem">${q.question}</h2>
+      <p style="font-size:.8rem;color:var(--muted-hot);margin:0 0 2.5rem;letter-spacing:.05em">${q.subtext}</p>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        ${q.options.map((o,i)=>{
+          const sel=state.answers[q.id]&&state.answers[q.id].id===o.id;
+          return`<button class="opt-btn" data-idx="${i}" style="display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;background:${sel?'rgba(196,113,59,.12)':'transparent'};color:var(--fg-hot);border:1px solid ${sel?'var(--accent)':'rgba(245,240,235,.1)'};cursor:pointer;font-size:.88rem;text-align:left;transition:all .3s ease;line-height:1.5">
+            <div><div>${o.text}</div><div style="font-size:.7rem;color:var(--muted-hot);margin-top:.2rem;font-style:italic;letter-spacing:.05em">${o.sub}</div></div>
+            <div style="font-size:.7rem;color:${sel?'var(--accent)':'rgba(245,240,235,.15)'};flex-shrink:0;margin-left:1rem">${sel?'●':'→'}</div>
+          </button>`;
+        }).join('')}
+      </div>
+      <!-- Navigation -->
+      <div class="nav-row">
+        <button class="nav-btn" id="prevBtn" ${isFirst?'disabled':''}>${isFirst?'':'← 前の質問'}</button>
+        <span class="nav-counter">${state.currentQ+1} / 7</span>
+        <button class="nav-btn ${hasAnswer?'primary':''}" id="nextBtn" ${hasAnswer?'':'disabled'}>${isLast?'結果を見る →':'次の質問 →'}</button>
+      </div>
+    </div>
+  </div>`;
+
+  // Option click — select only, don't auto-advance
+  document.querySelectorAll('.opt-btn').forEach((btn,i)=>{
+    btn.onmouseenter=()=>{if(!(state.answers[q.id]&&state.answers[q.id].id===q.options[i].id)){btn.style.borderColor='var(--accent)';btn.style.background='rgba(196,113,59,.05)';}};
+    btn.onmouseleave=()=>{if(!(state.answers[q.id]&&state.answers[q.id].id===q.options[i].id)){btn.style.borderColor='rgba(245,240,235,.1)';btn.style.background='transparent';}};
+    btn.onclick=()=>{
+      state.answers[q.id]=q.options[i];
+      renderQuestion(); // re-render question only, no full render (avoids animation replay)
+    };
+  });
+
+  // Nav
+  document.getElementById('homeBtn').onclick=()=>{state={phase:'intro',currentQ:0,answers:{},result:null,scores:null,selectedOpt:null};render();};
+  document.getElementById('prevBtn').onclick=()=>{if(state.currentQ>0){state.currentQ--;render();}};
+  document.getElementById('nextBtn').onclick=()=>{
+    if(!hasAnswer)return;
+    if(isLast){state.phase='analyzing';render();}
+    else{state.currentQ++;render();}
+  };
+}
+
+// ─── ANALYZING (brief, inside sauna still) ─────────
+function renderAnalyzing(){
+  app.innerHTML=`
+  <div style="animation:fadeIn .6s ease-out;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <div style="position:relative;width:120px;height:120px;margin-bottom:2rem">
+      <div style="position:absolute;inset:0;border:1px solid rgba(196,113,59,.2);border-radius:50%;animation:slowPulse 2s ease-in-out infinite"></div>
+      <div style="position:absolute;inset:15px;border:1px solid rgba(196,113,59,.15);border-radius:50%;animation:slowPulse 2s ease-in-out infinite;animation-delay:.5s"></div>
+      <div style="position:absolute;inset:30px;border:1px solid rgba(196,113,59,.1);border-radius:50%;animation:slowPulse 2s ease-in-out infinite;animation-delay:1s"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:1.5rem;color:var(--accent);opacity:.6">℃</div>
+    </div>
+    <div id="anTxt" style="font-size:.7rem;letter-spacing:.35em;color:var(--muted-hot);text-transform:uppercase">Analyzing</div>
+    <div style="margin-top:1rem;font-size:.75rem;color:rgba(245,240,235,.25)">あなたの理想を解析中</div>
+  </div>`;
+  let dots='';const iv=setInterval(()=>{dots=dots.length>=3?'':dots+'.';const el=document.getElementById('anTxt');if(el)el.textContent='Analyzing'+dots;else clearInterval(iv);},400);
+  // Compute result during analysis
+  setTimeout(()=>{
+    state.scores=calcScores(state.answers);
+    state.result=matchArchetype(state.scores);
+    clearInterval(iv);
+    state.phase='door';render();
+  },2000);
+}
+
+// ─── DOOR TRANSITION ───────────────────────────────
+function renderDoor(){
+  app.innerHTML='';
+  const overlay=document.getElementById('doorOverlay');
+  const doorL=document.getElementById('doorL');
+  const doorR=document.getElementById('doorR');
+  const doorText=document.getElementById('doorText');
+
+  // Reset
+  overlay.classList.add('active');
+  doorL.classList.remove('open');
+  doorR.classList.remove('open');
+  doorText.textContent='G A I K I Y O K U';
+  doorText.style.opacity='1';
+
+  // After a beat, open the doors
+  setTimeout(()=>{
+    doorText.style.transition='opacity .6s ease';
+    doorText.style.opacity='0';
+  },1400);
+
+  setTimeout(()=>{
+    doorL.classList.add('open');
+    doorR.classList.add('open');
+    // Insert light flash — big white-out
+    const light=document.createElement('div');
+    light.className='door-light';
+    overlay.appendChild(light);
+  },1800);
+
+  // Transition body to cool palette during white-out
+  setTimeout(()=>{
+    document.body.style.transition='background 2.5s ease, color 2s ease';
+    document.body.style.background='var(--bg-cool)';
+    document.body.style.color='var(--fg-cool)';
+    steamBox.style.opacity='0';
+    heatOv.style.opacity='0';
+  },2200);
+
+  // Activate gaikiyoku sky overlay
+  setTimeout(()=>{
+    const sky=document.getElementById('gaiSky');
+    if(sky) sky.classList.add('active');
+  },3000);
+
+  // Show result — longer hold on white for 外気浴 moment
+  setTimeout(()=>{
+    overlay.classList.remove('active');
+    const lights=overlay.querySelectorAll('.door-light');
+    lights.forEach(l=>l.remove());
+    doorL.classList.remove('open');
+    doorR.classList.remove('open');
+    state.phase='result';
+    render();
+  },4200);
+}
+
+// ─── RADAR（6軸・サウナ世界観・トップ5%アニメーション） ─────
+function makeRadar(sc){
+  const axes=[
+    {key:'autonomic',label:'自律神経力',sub:'Autonomic'},
+    {key:'recovery',label:'深層回復力',sub:'Recovery'},
+    {key:'sensory',label:'感覚開放度',sub:'Sensory'},
+    {key:'social',label:'社会的距離感',sub:'Social'},
+    {key:'introspect',label:'内省深度',sub:'Introspect'},
+    {key:'ritual',label:'儀式性',sub:'Ritual'}
+  ];
+  const n=axes.length;
+  const cx=200,cy=200,r=110,step=Math.PI*2/n;
+  const pt=(i,v)=>{const a=step*i-Math.PI/2,d=(v/3)*r;return[cx+d*Math.cos(a),cy+d*Math.sin(a)];};
+  const uid='r'+Date.now();
+
+  let svg=`<svg viewBox="0 0 400 400" style="width:100%;max-width:460px">`;
+
+  // ═══ DEFS: グラデーション・フィルター ═══
+  svg+=`<defs>
+    <radialGradient id="${uid}g1" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="rgba(74,158,136,.12)"/><stop offset="100%" stop-color="rgba(74,158,136,0)"/>
+    </radialGradient>
+    <radialGradient id="${uid}g2" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="rgba(74,158,136,.28)"/><stop offset="50%" stop-color="rgba(126,196,176,.12)"/><stop offset="100%" stop-color="rgba(74,158,136,.03)"/>
+    </radialGradient>
+    <filter id="${uid}glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="${uid}pulse"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>`;
+
+  // ═══ 背景グロー（整いの波紋 — ゆっくり呼吸する） ═══
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${r*1.4}" fill="url(#${uid}g1)" opacity="0">
+    <animate attributeName="opacity" values="0;.6;.6" dur="2s" fill="freeze"/>
+    <animate attributeName="r" values="${r*.5};${r*1.4}" dur="2s" fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/>
+  </circle>`;
+  // 呼吸する背景リング
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${r*1.1}" fill="none" stroke="rgba(74,158,136,.06)" stroke-width="40">
+    <animate attributeName="r" values="${r*.9};${r*1.15};${r*.9}" dur="6s" repeatCount="indefinite" begin="2s"/>
+    <animate attributeName="opacity" values="0;1;1" dur="2.5s" fill="freeze"/>
+  </circle>`;
+
+  // ═══ グリッド線（3レベル） — 順次フェードイン ═══
+  [1,2,3].forEach((lv,li)=>{
+    const pts=axes.map((_,i)=>pt(i,lv));
+    const d=`M${pts.map((p,i)=>`${i?'L':''}${p[0]} ${p[1]}`).join(' ')} Z`;
+    const op=lv===3?.25:.1+li*.03;
+    const sw=lv===3?1.2:.6;
+    svg+=`<path d="${d}" fill="none" stroke="rgba(42,58,52,${op})" stroke-width="${sw}" opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.5s" fill="freeze" begin="${0.2+li*0.15}s"/>
+    </path>`;
+  });
+
+  // ═══ 軸線（ダッシュで放射） ═══
+  axes.forEach((_,i)=>{
+    const[ex,ey]=pt(i,3);
+    svg+=`<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="rgba(42,58,52,.08)" stroke-width=".7" stroke-dasharray="4,4" opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.4s" fill="freeze" begin="${0.3+i*0.08}s"/>
+    </line>`;
+  });
+
+  // ═══ データエリア（段階展開 — 蒸気が広がるように） ═══
+  const dpts=axes.map((a,i)=>pt(i,sc[a.key]));
+  const pathD=`M${dpts.map((p,i)=>`${i?'L':''}${p[0]} ${p[1]}`).join(' ')} Z`;
+  const zeroD=`M${axes.map(()=>`${cx} ${cy}`).join(' L')} Z`;
+
+  // ゴースト（ぼんやり先に広がる — サウナ蒸気っぽい）
+  svg+=`<path d="${zeroD}" fill="url(#${uid}g2)" stroke="none" filter="url(#${uid}pulse)" opacity="0">
+    <animate attributeName="d" from="${zeroD}" to="${pathD}" dur="1.8s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.16 1 0.3 1"/>
+    <animate attributeName="opacity" from="0" to=".5" dur="1.2s" fill="freeze" begin="0.5s"/>
+  </path>`;
+
+  // メインエリア
+  svg+=`<path d="${zeroD}" fill="url(#${uid}g2)" stroke="var(--accent-cool)" stroke-width="2" stroke-linejoin="round" filter="url(#${uid}glow)" opacity="0">
+    <animate attributeName="d" from="${zeroD}" to="${pathD}" dur="1.6s" fill="freeze" begin="0.6s" calcMode="spline" keySplines="0.16 1 0.3 1"/>
+    <animate attributeName="opacity" from="0" to=".95" dur="1s" fill="freeze" begin="0.6s"/>
+  </path>`;
+
+  // ═══ データ点（順番に展開＋リングパルス） ═══
+  dpts.forEach((p,i)=>{
+    const delay=0.8+i*0.12;
+    // 外リング（パルスエフェクト）
+    svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="0" fill="none" stroke="var(--accent-cool)" stroke-width="1" opacity="0">
+      <animate attributeName="r" values="0;14;10" dur="0.8s" fill="freeze" begin="${delay}s" calcMode="spline" keySplines="0.16 1 0.3 1;0.25 0.46 0.45 0.94"/>
+      <animate attributeName="opacity" values="0;.4;.15" dur="0.8s" fill="freeze" begin="${delay}s"/>
+    </circle>`;
+    // メイン点
+    svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="0" fill="var(--accent-cool)" opacity="0">
+      <animate attributeName="r" values="0;7;5" dur="0.6s" fill="freeze" begin="${delay}s" calcMode="spline" keySplines="0.16 1 0.3 1;0.25 0.46 0.45 0.94"/>
+      <animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze" begin="${delay}s"/>
+    </circle>`;
+    // 白い光点（サウナの水滴のきらめき）
+    svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="0" fill="white" opacity="0">
+      <animate attributeName="r" values="0;3;1.5" dur="0.5s" fill="freeze" begin="${delay+0.1}s"/>
+      <animate attributeName="opacity" values="0;.8;.3" dur="0.5s" fill="freeze" begin="${delay+0.1}s"/>
+    </circle>`;
+  });
+
+  // ═══ ラベル（6軸 — 日本語名 + スコア% + カウントアップ風） ═══
+  axes.forEach((a,i)=>{
+    const[lx,ly]=pt(i,3);
+    const ang=step*i-Math.PI/2;
+    const pct=Math.round((sc[a.key]/3)*100);
+    // ラベル位置調整（6角形）
+    const dist=34;
+    const ox=Math.cos(ang)*dist;
+    const oy=Math.sin(ang)*dist;
+    const tx=lx+ox, ty=ly+oy;
+    const anchor=Math.abs(ox)<5?'middle':ox>0?'start':'end';
+    const delay=1.2+i*0.1;
+
+    svg+=`<g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" dur="0.6s" fill="freeze" begin="${delay}s"/>
+      <text x="${tx}" y="${ty-4}" text-anchor="${anchor}" font-size="12.5" fill="var(--fg-cool)" font-family="var(--sans)" font-weight="600" opacity=".9">${a.label}</text>
+      <text x="${tx}" y="${ty+14}" text-anchor="${anchor}" font-size="10" fill="var(--muted-cool)" font-family="var(--sans)" font-weight="300" letter-spacing=".5" opacity=".6">${a.sub}</text>
+      <text x="${tx}" y="${ty+32}" text-anchor="${anchor}" font-size="22" fill="var(--accent-cool)" font-family="var(--serif)" font-weight="600">${pct}<tspan font-size="11" dy="-3" font-weight="400">%</tspan></text>
+    </g>`;
+  });
+
+  svg+=`</svg>`;
+  return svg;
+}
+
+// ─── RESULT (Gaikiyoku mode — ふわり〜〜〜) ────────
+function renderResult(){
+  const a=state.result,s=state.scores;
+  const spacer=`<div style="height:4.5rem"></div>`;
+
+  const glossaryData=[
+    {term:'整う（ととのう）',desc:'サウナ→水風呂→外気浴のサイクルで到達する深いリラックス状態。交感神経の緊張が一気に副交感神経優位へ切り替わる瞬間。'},
+    {term:'外気浴（がいきよく）',desc:'水風呂の後、外気に触れながら休息すること。β-エンドルフィンとオキシトシンが分泌され、多幸感をもたらす。'},
+    {term:'ロウリュ',desc:'フィンランド語 löyly。サウナストーンに水をかけ、蒸気を発生させること。体感温度を一気に10-20℃引き上げる。'},
+    {term:'アウフグース',desc:'ドイツ発祥。熱波師（Aufgussmeister）がタオルを振り、ロウリュの蒸気を客席に送る儀式的パフォーマンス。'},
+    {term:'HSP（Heat Shock Protein）',desc:'熱刺激で生成されるタンパク質。損傷した細胞のタンパク質修復を促進。Laukkanen et al.(2015) JAMAで心血管保護効果が示された。'},
+    {term:'DMN（Default Mode Network）',desc:'安静時に活性化する脳のネットワーク。サウナの無刺激環境でDMNが活性化し、内省・創造性・自己参照処理が促進される。'},
+    {term:'セルフロウリュ',desc:'利用者自身がサウナストーンに水をかけられる設備。水量とタイミングを自分で調整でき、熱との対話が可能になる。'},
+    {term:'ヴィヒタ',desc:'フィンランド語 vihta。白樺の枝葉を束ねたもの。身体を叩くことで血行を促進し、白樺のフィトンチッドが香る。'},
+    {term:'グルシン',desc:'水風呂の温度が10℃未満（シングル）のこと。強烈な末梢血管収縮を引き起こす。'},
+    {term:'サ旅（さたび）',desc:'サウナを目的とした旅行。地方の名サウナを巡り、その土地の水質・外気浴環境を楽しむ文化的行為。'},
+    {term:'水通し（みずどおし）',desc:'サウナ前に水風呂に軽く浸かること。表面体温を下げ、初回サウナでの発汗効率を高めるテクニック。'},
+    {term:'あまみ',desc:'サウナ後に皮膚表面に現れる赤と白のまだら模様。毛細血管の拡張・収縮パターンが交互に表出する生理現象。'}
+  ];
+  const glossaryHtml=glossaryData.map(function(g){return '<div style="margin-bottom:1.3rem;padding-bottom:1.3rem;border-bottom:1px solid rgba(74,158,136,.08)"><div style="font-size:.95rem;font-weight:500;color:var(--fg-cool);margin-bottom:.4rem">'+g.term+'</div><div style="font-size:.8rem;line-height:1.9;color:var(--fg-cool);opacity:.75;font-weight:300">'+g.desc+'</div></div>';}).join('');
+
+  app.innerHTML=`
+  <div id="result-body" style="opacity:0;min-height:100vh;position:relative;z-index:1;transition:opacity 2s cubic-bezier(.25,.46,.45,.94)">
+
+    <!-- ═══ HERO: 大きく、ふわりと ═══ -->
+    <div class="fade-s" style="text-align:center;padding:12vh 2rem 6rem;position:relative">
+      <div style="position:absolute;top:10%;left:50%;transform:translateX(-50%);width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(74,158,136,.06) 0%,transparent 70%);filter:blur(40px);pointer-events:none;animation:skyBreathe 8s ease-in-out infinite"></div>
+      <div style="font-size:.5rem;letter-spacing:.7em;color:var(--muted-cool);text-transform:uppercase;margin-bottom:2rem;opacity:.8">Your Sauna Type</div>
+      <h1 style="font-family:var(--serif);font-size:clamp(3rem,9vw,5rem);font-weight:300;margin:0;letter-spacing:-.03em;line-height:1.1;color:var(--fg-cool)">${a.name}</h1>
+      <div style="font-size:1.1rem;color:var(--muted-cool);margin-top:1rem;font-weight:400;letter-spacing:.15em">${a.nameJa}</div>
+      <div style="width:3rem;height:1px;background:var(--accent-cool);margin:2rem auto;opacity:.5"></div>
+      <div style="font-family:var(--serif);font-size:clamp(.9rem,2.5vw,1.15rem);color:var(--accent-cool);font-style:italic;max-width:500px;margin:0 auto;line-height:1.8">${a.subtitle}</div>
+    </div>
+
+    <!-- Description -->
+    <div class="fade-s" style="padding:0 2rem">
+      <p style="font-size:1rem;line-height:2.4;color:var(--fg-cool);opacity:.85;text-align:center;max-width:520px;margin:0 auto;font-weight:300">${a.description.replace('{{BR}}','</p><p style=\"font-size:.95rem;line-height:2.2;color:var(--accent-cool);opacity:.9;text-align:center;max-width:520px;margin:1.5rem auto 0;font-weight:400;font-style:italic\">')}</p>
+    </div>
+
+    <!-- Radar -->
+    <div class="fade-s" style="max-width:600px;margin:3rem auto 2rem;padding:0 2rem">
+      <div style="text-align:center;margin-bottom:.5rem">
+        <div style="font-size:.5rem;letter-spacing:.4em;color:var(--muted-cool);text-transform:uppercase">Your Sauna Profile</div>
+      </div>
+      <div style="display:flex;justify-content:center;max-width:500px;margin:0 auto">${makeRadar(s)}</div>
+      <p style="font-size:.92rem;line-height:2.2;color:var(--fg-cool);opacity:.85;text-align:center;max-width:520px;margin:1rem auto 0;font-weight:300">${a.scoreNarrative}</p>
+    </div>
+
+    ${spacer}
+
+    <!-- ═══ 01: THE PLACES ═══ -->
+    <div class="fade-s" style="padding:0 2rem;max-width:700px;margin:0 auto">
+      <div style="display:flex;align-items:baseline;gap:.8rem;margin-bottom:.6rem">
+        <div style="font-family:var(--serif);font-size:2rem;font-weight:300;color:var(--accent-cool);opacity:.7">01</div>
+        <div style="font-size:.6rem;letter-spacing:.35em;color:var(--muted-cool);text-transform:uppercase">Your Sauna — あなたの居場所</div>
+      </div>
+      <p style="font-size:.92rem;line-height:2.2;color:var(--fg-cool);opacity:.85;margin:0 0 2rem;font-weight:300">${a.facilityIntro}</p>
+      ${a.facilities.map(f=>`
+        <div style="padding:2rem;margin-bottom:1.2rem;transition:all .5s cubic-bezier(.25,.46,.45,.94);background:rgba(255,255,255,.5);border-radius:12px;box-shadow:0 2px 20px rgba(74,158,136,.04);backdrop-filter:blur(10px)" onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(74,158,136,.08)'" onmouseleave="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 20px rgba(74,158,136,.04)'">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
+            <div><div style="font-family:var(--serif);font-size:1.4rem;font-weight:400;color:var(--fg-cool)">${f.name}</div><div style="font-size:.75rem;color:var(--muted-cool);margin-top:.3rem">${f.area}</div></div>
+            <div style="display:flex;gap:.5rem">
+              <a href="${f.webUrl}" target="_blank" rel="noopener" style="font-size:.55rem;letter-spacing:.1em;color:var(--accent-cool);text-decoration:none;text-transform:uppercase;opacity:.7;transition:opacity .3s;padding:.3rem .6rem;border:1px solid rgba(74,158,136,.2);border-radius:20px" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.7'">Web</a>
+              <a href="${f.mapUrl}" target="_blank" rel="noopener" style="font-size:.55rem;letter-spacing:.1em;color:var(--accent-cool);text-decoration:none;text-transform:uppercase;opacity:.7;transition:opacity .3s;padding:.3rem .6rem;border:1px solid rgba(74,158,136,.2);border-radius:20px" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.7'">Map</a>
+            </div>
+          </div>
+          <div style="display:flex;gap:1.2rem;margin-bottom:1rem;flex-wrap:wrap">
+            <div style="font-size:.55rem;letter-spacing:.1em;color:var(--muted-cool);opacity:.85"><span style="color:var(--accent-cool);opacity:1;margin-right:.3rem">TYPE</span>${f.type}</div>
+            <div style="font-size:.55rem;letter-spacing:.1em;color:var(--muted-cool);opacity:.85"><span style="color:var(--accent-cool);opacity:1;margin-right:.3rem">TEMP</span>${f.temp}</div>
+            <div style="font-size:.55rem;letter-spacing:.1em;color:var(--muted-cool);opacity:.85"><span style="color:var(--accent-cool);opacity:1;margin-right:.3rem">HUMIDITY</span>${f.humidity}</div>
+          </div>
+          <div style="font-size:.7rem;color:var(--accent-cool);margin-bottom:.8rem;font-style:italic;opacity:.9">${f.vibe}</div>
+          <p style="font-size:.85rem;line-height:2.2;color:var(--fg-cool);opacity:.85;margin:0;font-weight:300">${f.context}</p>
+        </div>`).join('')}
+    </div>
+
+    ${spacer}
+
+    <!-- ═══ 02: YOUR RITUAL ═══ -->
+    <div class="fade-s" style="padding:0 2rem;max-width:700px;margin:0 auto">
+      <div style="display:flex;align-items:baseline;gap:.8rem;margin-bottom:1.2rem">
+        <div style="font-family:var(--serif);font-size:2rem;font-weight:300;color:var(--accent-cool);opacity:.7">02</div>
+        <div style="font-size:.6rem;letter-spacing:.35em;color:var(--muted-cool);text-transform:uppercase">Your Ritual — 整いのルーティン</div>
+      </div>
+      <div style="border-left:2px solid var(--accent-cool);padding:2rem 2rem;background:rgba(255,255,255,.4);border-radius:0 12px 12px 0;box-shadow:0 2px 16px rgba(74,158,136,.03)">
+        <p style="font-size:1rem;line-height:2.3;color:var(--fg-cool);margin:0;font-style:italic;font-weight:300;opacity:.9">${a.ritual}</p>
+      </div>
+    </div>
+
+    ${spacer}
+
+    <!-- ═══ 03: YOUR HAT ═══ -->
+    <div class="fade-s" style="padding:0 2rem;max-width:700px;margin:0 auto">
+      <div style="display:flex;align-items:baseline;gap:.8rem;margin-bottom:1.2rem">
+        <div style="font-family:var(--serif);font-size:2rem;font-weight:300;color:var(--accent-cool);opacity:.7">03</div>
+        <div style="font-size:.6rem;letter-spacing:.35em;color:var(--muted-cool);text-transform:uppercase">Your Hat — あなたに合うサウナハット</div>
+      </div>
+      <p style="font-size:.92rem;line-height:2.2;color:var(--fg-cool);opacity:.85;margin:0 0 2rem;font-weight:300">${a.hatIntro}</p>
+      <div style="padding:2rem;background:rgba(255,255,255,.5);border-radius:12px;box-shadow:0 2px 20px rgba(74,158,136,.04)">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:.7rem 1.5rem;font-size:.88rem;line-height:1.9">
+          <span style="color:var(--accent-cool);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;padding-top:.2rem;opacity:.9">Material</span><span style="color:var(--fg-cool);font-weight:400">${a.hat.material}</span>
+          <span style="color:var(--accent-cool);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;padding-top:.2rem;opacity:.9">Shape</span><span style="color:var(--fg-cool);font-weight:400">${a.hat.shape}</span>
+          <span style="color:var(--accent-cool);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;padding-top:.2rem;opacity:.9">Color</span><span style="color:var(--fg-cool);font-weight:400">${a.hat.color}</span>
+        </div>
+      </div>
+
+      <!-- WHY -->
+      <div style="margin-top:2rem">
+        ${[{l:'素材',t:a.hat.materialLogic},{l:'形状',t:a.hat.shapeLogic},{l:'色彩',t:a.hat.colorLogic}].map(it=>`
+          <div style="margin-bottom:1.5rem;padding-left:1.4rem;border-left:1px solid rgba(74,158,136,.3)">
+            <div style="font-size:.55rem;color:var(--accent-cool);letter-spacing:.2em;margin-bottom:.4rem;text-transform:uppercase;opacity:.85">${it.l}</div>
+            <p style="font-size:.85rem;line-height:2.2;color:var(--fg-cool);opacity:.85;margin:0;font-weight:300">${it.t}</p>
+          </div>`).join('')}
+      </div>
+
+      <!-- Product link -->
+      <a href="${a.hat.buyUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;text-decoration:none;transition:all .5s cubic-bezier(.25,.46,.45,.94);margin-top:1.2rem;background:rgba(255,255,255,.5);border-radius:10px;box-shadow:0 1px 10px rgba(74,158,136,.04)" onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(74,158,136,.08)'" onmouseleave="this.style.transform='translateY(0)';this.style.boxShadow='0 1px 10px rgba(74,158,136,.04)'">
+        <div><div style="font-size:.5rem;letter-spacing:.2em;color:var(--muted-cool);text-transform:uppercase;margin-bottom:.3rem;opacity:.7">Reference Product</div><div style="font-size:.8rem;color:var(--fg-cool);font-weight:400">${a.hat.buyText}</div></div>
+        <span style="font-size:.7rem;color:var(--accent-cool);opacity:.7">→</span>
+      </a>
+    </div>
+
+    ${spacer}
+
+    <!-- ═══ SHARE ═══ -->
+    <div class="fade-s" style="text-align:center;padding:0 2rem 2rem;max-width:420px;margin:0 auto">
+      <div style="font-size:.5rem;letter-spacing:.4em;color:var(--muted-cool);text-transform:uppercase;margin-bottom:1.2rem;opacity:.7">Share Your Result</div>
+      <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+        <button onclick="(function(){var t='SAUNA PLAN 診断結果：${a.name}（${a.nameJa}）\\n${a.subtitle}\\n\\n';var u=location.origin+location.pathname+'?type='+state.result.id;window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(t)+'&url='+encodeURIComponent(u),'_blank','width=550,height=420')})()" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.8);color:#fff;border:none;padding:.55rem 1.2rem;font-size:.6rem;letter-spacing:.1em;cursor:pointer;border-radius:24px;transition:all .3s ease" onmouseenter="this.style.transform='translateY(-2px)';this.style.background='#000'" onmouseleave="this.style.transform='translateY(0)';this.style.background='rgba(0,0,0,.8)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          POST
+        </button>
+        <button onclick="(function(){var t='SAUNA PLAN 診断結果：${a.name}（${a.nameJa}）%0A${a.subtitle}%0A'+encodeURIComponent(location.origin+location.pathname+'?type='+state.result.id);window.open('https://social-plugins.line.me/lineit/share?url='+encodeURIComponent(location.origin+location.pathname+'?type='+state.result.id)+'&text='+t,'_blank','width=550,height=420')})()" style="display:inline-flex;align-items:center;gap:.4rem;background:#06C755;color:#fff;border:none;padding:.55rem 1.2rem;font-size:.6rem;letter-spacing:.1em;cursor:pointer;border-radius:24px;transition:all .3s ease" onmouseenter="this.style.transform='translateY(-2px)';this.style.background='#05b34d'" onmouseleave="this.style.transform='translateY(0)';this.style.background='#06C755'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+          LINE
+        </button>
+        <button onclick="(function(){var u=location.origin+location.pathname+'?type='+state.result.id;navigator.clipboard.writeText(u).then(function(){var b=document.getElementById('copyLinkBtn');b.textContent='✓ COPIED';setTimeout(function(){b.textContent='COPY LINK'},2000)})})()" id="copyLinkBtn" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(74,158,136,.12);color:var(--accent-cool);border:1px solid rgba(74,158,136,.25);padding:.55rem 1.2rem;font-size:.6rem;letter-spacing:.1em;cursor:pointer;border-radius:24px;transition:all .3s ease" onmouseenter="this.style.transform='translateY(-2px)';this.style.background='rgba(74,158,136,.2)'" onmouseleave="this.style.transform='translateY(0)';this.style.background='rgba(74,158,136,.12)'">
+          COPY LINK
+        </button>
+      </div>
+    </div>
+
+    ${spacer}
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="fade-s" style="text-align:center;padding:0 2rem 8rem">
+      <div style="font-family:var(--serif);font-size:1.2rem;font-weight:300;color:var(--fg-cool);opacity:.5;margin-bottom:3rem;letter-spacing:.05em">
+        I am <span style="color:var(--accent-cool);opacity:1">${a.name}</span>.
+      </div>
+      <button id="restartBtn" style="background:rgba(255,255,255,.5);border:none;color:var(--muted-cool);padding:1rem 3rem;font-size:.65rem;letter-spacing:.25em;cursor:pointer;text-transform:uppercase;transition:all .5s cubic-bezier(.25,.46,.45,.94);border-radius:40px;box-shadow:0 2px 12px rgba(74,158,136,.05)"
+        onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(74,158,136,.1)';this.style.color='var(--accent-cool)'"
+        onmouseleave="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 12px rgba(74,158,136,.05)';this.style.color='var(--muted-cool)'">
+        もう一度診断する
+      </button>
+      <div style="font-size:.65rem;color:var(--fg-cool);opacity:.4;margin-top:3rem;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.8;font-weight:300;text-align:center">本診断はサウナ体験の参考情報であり、医学的助言ではありません。心血管疾患・高血圧等の持病がある方は、医師にご相談ください。施設情報・商品情報は変更される場合があります。</div>
+      <div style="font-size:.45rem;color:var(--fg-cool);opacity:.3;margin-top:2rem;letter-spacing:.25em;text-transform:uppercase">Sauna Experience Designer — Tokyo, 2026</div>
+    </div>
+  </div>
+  <!-- ═══ サウナ用語集 フローティングボタン ═══ -->
+  <div id="glossaryBtn" onclick="document.getElementById('glossaryModal').style.display='flex'" style="position:fixed;bottom:2rem;right:2rem;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(74,158,136,.15);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:100;transition:all .4s cubic-bezier(.25,.46,.45,.94);border:1px solid rgba(74,158,136,.15)" onmouseenter="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 32px rgba(74,158,136,.25)'" onmouseleave="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(74,158,136,.15)'">
+    <span style="font-size:1.3rem">♨</span>
+  </div>
+  <!-- ═══ サウナ用語集 モーダル ═══ -->
+  <div id="glossaryModal" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center;background:rgba(42,58,52,.4);backdrop-filter:blur(6px);padding:1.5rem;animation:fadeIn .3s">
+    <div style="background:var(--bg-cool);border-radius:16px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);padding:2.5rem 2rem;position:relative">
+      <button onclick="document.getElementById('glossaryModal').style.display='none'" style="position:absolute;top:1rem;right:1.2rem;background:none;border:none;font-size:1.2rem;color:var(--muted-cool);cursor:pointer;padding:.3rem">×</button>
+      <div style="font-size:.5rem;letter-spacing:.4em;color:var(--muted-cool);text-transform:uppercase;margin-bottom:.5rem">Glossary</div>
+      <h2 style="font-family:var(--serif);font-size:1.6rem;font-weight:400;color:var(--fg-cool);margin:0 0 1.5rem">サウナ用語集</h2>
+      ${glossaryHtml}
+    </div>
+  </div>`;  /* closes result-body + glossary */
+
+  // ═══ Gaikiyoku atmosphere — ふわり〜〜〜と漂うパーティクル ═══
+  (function spawnGaikiyoku(){
+    // 大きなぼかし球体（ゆっくり漂う）
+    for(let i=0;i<6;i++){
+      const p=document.createElement('div');
+      p.className='gai-particle gai-particle--large';
+      const size=80+Math.random()*120;
+      p.style.width=size+'px';p.style.height=size+'px';
+      p.style.left=Math.random()*100+'%';
+      p.style.bottom=(-10-Math.random()*15)+'%';
+      p.style.animationDuration=(18+Math.random()*14)+'s';
+      p.style.animationDelay=(-Math.random()*16)+'s';
+      document.body.appendChild(p);
+    }
+    // 緑のオーブ（中サイズ）
+    for(let i=0;i<10;i++){
+      const p=document.createElement('div');
+      p.className='gai-particle gai-particle--orb';
+      const size=6+Math.random()*14;
+      p.style.width=size+'px';p.style.height=size+'px';
+      p.style.left=Math.random()*100+'%';
+      p.style.bottom=(-8-Math.random()*15)+'%';
+      p.style.animationDuration=(9+Math.random()*10)+'s';
+      p.style.animationDelay=(-Math.random()*10)+'s';
+      document.body.appendChild(p);
+    }
+    // 白い光の粒子（小さい、キラキラ）
+    for(let i=0;i<12;i++){
+      const p=document.createElement('div');
+      p.className='gai-particle gai-particle--light';
+      const size=3+Math.random()*6;
+      p.style.width=size+'px';p.style.height=size+'px';
+      p.style.left=Math.random()*100+'%';
+      p.style.bottom=(-5-Math.random()*10)+'%';
+      p.style.animationDuration=(6+Math.random()*8)+'s';
+      p.style.animationDelay=(-Math.random()*8)+'s';
+      document.body.appendChild(p);
+    }
+    // 塵（微小、たくさん）
+    for(let i=0;i<18;i++){
+      const p=document.createElement('div');
+      p.className='gai-particle gai-particle--dust';
+      p.style.width='2px';p.style.height='2px';
+      p.style.left=Math.random()*100+'%';
+      p.style.bottom=(-5-Math.random()*10)+'%';
+      p.style.animationDuration=(5+Math.random()*7)+'s';
+      p.style.animationDelay=(-Math.random()*6)+'s';
+      document.body.appendChild(p);
+    }
+    // 風 — 細い線
+    for(let i=0;i<6;i++){
+      const w=document.createElement('div');
+      w.className='gai-wind';
+      w.style.width=(180+Math.random()*350)+'px';
+      w.style.top=(8+Math.random()*75)+'%';
+      w.style.animationDuration=(10+Math.random()*10)+'s';
+      w.style.animationDelay=(-Math.random()*12)+'s';
+      document.body.appendChild(w);
+    }
+    // 風 — 太いうねり
+    for(let i=0;i<4;i++){
+      const w=document.createElement('div');
+      w.className='gai-wind--wide';
+      w.style.width=(350+Math.random()*600)+'px';
+      w.style.top=(15+Math.random()*55)+'%';
+      w.style.animationDuration=(14+Math.random()*12)+'s';
+      w.style.animationDelay=(-Math.random()*16)+'s';
+      document.body.appendChild(w);
+    }
+  })();
+
+  // ═══ FADE IN — ふわり〜っと浮き上がる ═══
+  const body=document.getElementById('result-body');
+  setTimeout(()=>{body.style.opacity='1';},200);
+
+  // 各セクションがふわり〜っと順番に浮き上がる
+  document.querySelectorAll('.fade-s').forEach((sec,i)=>{
+    sec.style.opacity='0';
+    sec.style.transform='translateY(60px) scale(.97)';
+    sec.style.transition='opacity 1.6s cubic-bezier(.25,.46,.45,.94), transform 1.8s cubic-bezier(.16,1,.3,1)';
+    setTimeout(()=>{sec.style.opacity='1';sec.style.transform='translateY(0) scale(1)';},600+i*350);
+  });
+
+  document.getElementById('restartBtn').onclick=()=>{
+    // Clean up gaikiyoku atmosphere
+    document.querySelectorAll('.gai-particle,.gai-wind,.gai-wind--wide').forEach(p=>p.remove());
+    const sky=document.getElementById('gaiSky');if(sky)sky.classList.remove('active');
+    // Transition back to hot mode
+    document.body.style.transition='background 1s ease, color 1s ease';
+    document.body.style.background='var(--bg-hot)';
+    document.body.style.color='var(--fg-hot)';
+    steamBox.style.transition='opacity 1s ease';
+    steamBox.style.opacity='1';
+    heatOv.style.transition='opacity 1s ease';
+    heatOv.style.opacity='1';
+    setTimeout(()=>{state={phase:'intro',currentQ:0,answers:{},result:null,scores:null,selectedOpt:null};render();},500);
+  };
+}
+
+// ─── INIT ──────────────────────────────────────────
+// シェアリンク対応: ?type=xxx で直接結果表示
+(function checkShareLink(){
+  const params=new URLSearchParams(window.location.search);
+  const typeId=params.get('type');
+  if(typeId && ARCHETYPES[typeId]){
+    // 中間スコアをアーキタイプのセンターから生成
+    const a=ARCHETYPES[typeId];
+    a.id=typeId;
+    state.scores={};
+    for(const ax of AXES) state.scores[ax]=a.center[ax];
+    state.result=a;
+    state.phase='result';
+  }
+})();
+render();
+</script>
+</body>
+</html>
+
